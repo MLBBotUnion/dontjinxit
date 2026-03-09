@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@DontJinxIt — MLB Rare Event Bot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Crimson+Pro:ital,wght@0,400;0,600;1,400;1,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --black: #060608;
+      --surface: #0c0c10;
+      --border: #141418;
+      --muted: #2a2a32;
+      --dim: #444450;
+      --mid: #888892;
+      --light: #c8c8d0;
+      --white: #f0f0f4;
+      --gold: #FFD700;
+      --orange: #FF6B35;
+      --red: #FF3C5A;
+      --green: #2ECC71;
+      --teal: #4ECDC4;
+      --pink: #FF00AA;
+      --purple: #B8A9FF;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--light);
+      font-family: 'Crimson Pro', Georgia, serif;
+      font-size: 18px;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ── Grain overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0.4;
+    }
+
+    /* ── Animations ── */
+    @keyframes flicker { 0%,89%,91%,100%{opacity:1}90%{opacity:.6} }
+    @keyframes pulse-ring { 0%{transform:scale(1);opacity:.8}100%{transform:scale(2.8);opacity:0} }
+    @keyframes heartbeat { 0%,100%{transform:scale(1)}15%{transform:scale(1.15)}30%{transform:scale(1)} }
+    @keyframes float { 0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)} }
+    @keyframes fade-up { from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)} }
+    @keyframes scan { 0%{transform:translateY(-100%)}100%{transform:translateY(100vh)} }
+    @keyframes glow-pulse { 0%,100%{box-shadow:0 0 20px #FFD70015}50%{box-shadow:0 0 40px #FFD70030} }
+
+    .fade-up { animation: fade-up .6s ease forwards; }
+    .flicker { animation: flicker 7s infinite; }
+    .heartbeat { animation: heartbeat 1.8s ease-in-out infinite; }
+    .float { animation: float 3s ease-in-out infinite; }
+
+    /* ── Scanline ── */
+    .scanline {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255,215,0,0.06), transparent);
+      animation: scan 8s linear infinite;
+      pointer-events: none;
+      z-index: 998;
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Header ── */
+    header {
+      padding: 80px 0 60px;
+      text-align: center;
+      position: relative;
+    }
+
+    .flame-row {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 2px;
+      margin-bottom: 28px;
+    }
+
+    .hero-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(64px, 12vw, 120px);
+      letter-spacing: 0.04em;
+      color: var(--white);
+      line-height: 0.9;
+      animation: flicker 7s infinite;
+      text-shadow: 0 0 60px rgba(255,215,0,0.15);
+    }
+
+    .hero-title span { color: var(--gold); }
+
+    .hero-handle {
+      font-family: 'DM Mono', monospace;
+      color: var(--gold);
+      font-size: 14px;
+      letter-spacing: 0.3em;
+      margin-top: 16px;
+      opacity: 0.8;
+    }
+
+    .hero-sub {
+      font-style: italic;
+      color: var(--mid);
+      font-size: 20px;
+      margin-top: 12px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(46,204,113,0.08);
+      border: 1px solid rgba(46,204,113,0.25);
+      border-radius: 100px;
+      padding: 8px 20px;
+      margin-top: 28px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--green);
+    }
+
+    .live-dot {
+      position: relative;
+      width: 8px; height: 8px;
+    }
+    .live-dot::before {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      border: 1px solid var(--green);
+      animation: pulse-ring 1.8s ease-out infinite;
+    }
+    .live-dot::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    /* ── Section ── */
+    section {
+      padding: 60px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .section-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(36px, 6vw, 56px);
+      letter-spacing: 0.04em;
+      color: var(--white);
+      line-height: 1;
+      margin-bottom: 20px;
+    }
+
+    h2 span { color: var(--gold); }
+
+    p {
+      color: var(--mid);
+      font-size: 18px;
+      line-height: 1.8;
+      margin-bottom: 16px;
+    }
+
+    /* ── Events grid ── */
+    .events-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 2px;
+      margin-top: 40px;
+    }
+
+    .event-card {
+      background: var(--surface);
+      padding: 24px 26px;
+      border-left: 3px solid transparent;
+      transition: background .2s, border-color .2s;
+      cursor: default;
+    }
+
+    .event-card:hover {
+      background: #10101a;
+    }
+
+    .event-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .event-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 0.06em;
+      color: var(--white);
+      line-height: 1.1;
+    }
+
+    .event-rarity {
+      font-family: 'DM Mono', monospace;
+      font-size: 8px;
+      letter-spacing: 0.2em;
+      padding: 3px 8px;
+      border-radius: 3px;
+      white-space: nowrap;
+      margin-left: 10px;
+      flex-shrink: 0;
+    }
+
+    .event-desc {
+      font-size: 14px;
+      color: var(--dim);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .event-type {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-top: 10px;
+    }
+
+    /* ── Tier table ── */
+    .tier-table {
+      margin-top: 40px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .tier-row {
+      display: grid;
+      grid-template-columns: 110px 80px 100px 1fr;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+    }
+
+    .tier-row:last-child { border-bottom: none; }
+
+    .tier-row.header {
+      background: var(--surface);
+    }
+
+    .tier-cell {
+      padding: 14px 18px;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--dim);
+      border-right: 1px solid var(--border);
+    }
+
+    .tier-cell:last-child { border-right: none; }
+
+    .tier-row.header .tier-cell {
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .tier-name {
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    /* ── Tweet example ── */
+    .tweet-example {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 16px;
+      position: relative;
+      animation: glow-pulse 4s ease-in-out infinite;
+    }
+
+    .tweet-example::before {
+      content: '@DontJinxIt';
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .tweet-text {
+      font-style: italic;
+      color: var(--light);
+      font-size: 17px;
+      line-height: 1.75;
+      white-space: pre-line;
+    }
+
+    .tweet-meta {
+      display: flex;
+      gap: 16px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .tweet-tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+    }
+
+    /* ── MC section ── */
+    .mc-visual {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      margin-top: 40px;
+    }
+
+    .mc-card {
+      background: var(--surface);
+      padding: 28px;
+    }
+
+    .mc-prob {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 64px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .mc-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .mc-bar {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .mc-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width .8s ease;
+    }
+
+    /* ── Cost section ── */
+    .cost-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cost-row:last-child { border-bottom: none; }
+
+    .cost-service {
+      font-size: 16px;
+      color: var(--light);
+    }
+
+    .cost-note {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--dim);
+      margin-top: 2px;
+    }
+
+    .cost-price {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      color: var(--green);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      text-align: center;
+    }
+
+    footer p {
+      font-size: 14px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .x-link {
+      color: var(--gold);
+      text-decoration: none;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 0.15em;
+      border-bottom: 1px solid rgba(255,215,0,0.3);
+      padding-bottom: 1px;
+      transition: border-color .2s;
+    }
+
+    .x-link:hover { border-color: var(--gold); }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .tier-row { grid-template-columns: 90px 70px 1fr; }
+      .tier-row > .tier-cell:nth-child(3) { display: none; }
+      .mc-visual { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="scanline"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="container">
+    <div class="flame-row">
+      <svg width="18" height="28" viewBox="0 0 40 56" fill="none" style="animation:float 3.2s ease-in-out infinite"><defs><radialGradient id="f1" cx="50%" cy="75%" r="65%"><stop offset="0%" stop-color="#FFF176"/><stop offset="40%" stop-color="#FF8C00"/><stop offset="100%" stop-color="#3a0000" stop-opacity="0"/></radialGradient></defs><path d="M20 2C20 2 13 12 13 21C13 21 9 17 11 12C11 12 3 20 3 30C3 43 11 54 20 54C29 54 37 43 37 30C37 20 29 12 29 12C31 17 27 21 27 21C27 12 20 2 20 2Z" fill="url(#f1)"/></svg>
+      <svg width="28" height="42" viewBox="0 0 40 56" fill="none" style="animation:heartbeat 1.8s ease-in-out infinite"><defs><radialGradient id="f2" cx="50%" cy="75%" r="65%"><stop offset="0%" stop-color="#FFF176"/><stop offset="30%" stop-color="#FFB300"/><stop offset="70%" stop-color="#FF4500"/><stop offset="100%" stop-color="#3a0000" stop-opacity="0"/></radialGradient></defs><path d="M20 2C20 2 13 12 13 21C13 21 9 17 11 12C11 12 3 20 3 30C3 43 11 54 20 54C29 54 37 43 37 30C37 20 29 12 29 12C31 17 27 21 27 21C27 12 20 2 20 2Z" fill="url(#f2)"/><path d="M20 24C20 24 16 30 16 35C16 39 18 42 20 42C22 42 24 39 24 35C24 30 20 24 20 24Z" fill="#FFFDE7" opacity=".9"/></svg>
+      <svg width="22" height="34" viewBox="0 0 40 56" fill="none" style="animation:float 2.8s ease-in-out infinite 0.4s"><defs><radialGradient id="f3" cx="50%" cy="75%" r="65%"><stop offset="0%" stop-color="#FFF176"/><stop offset="40%" stop-color="#FF6B35"/><stop offset="100%" stop-color="#3a0000" stop-opacity="0"/></radialGradient></defs><path d="M20 2C20 2 13 12 13 21C13 21 9 17 11 12C11 12 3 20 3 30C3 43 11 54 20 54C29 54 37 43 37 30C37 20 29 12 29 12C31 17 27 21 27 21C27 12 20 2 20 2Z" fill="url(#f3)"/></svg>
+    </div>
+
+    <h1 class="hero-title">Don't<br><span>Jinx</span> It</h1>
+    <div class="hero-handle">@DONTJINXIT ON X</div>
+    <p class="hero-sub">A bot that watches every MLB game, every pitch, every out — and tells you when history is happening.</p>
+
+    <div class="live-badge">
+      <span class="live-dot"></span>
+      LIVE · TRACKING ALL MLB GAMES
+    </div>
+  </div>
+</header>
+
+<!-- RARE EVENTS -->
+<section>
+  <div class="container">
+    <div class="section-label">What We Watch</div>
+    <h2>12 Rare <span>Events</span></h2>
+    <p>From once-a-decade milestones to plays that happen a handful of times per season — if it's rare, we're watching.</p>
+
+    <div class="events-grid">
+
+      <div class="event-card" style="border-left-color:#FFD700">
+        <div class="event-header">
+          <div class="event-name">Perfect Game</div>
+          <div class="event-rarity" style="background:#FFD70012;color:#FFD700;border:1px solid #FFD70030">MYTHIC</div>
+        </div>
+        <p class="event-desc">27 up, 27 down. No hits, no walks, no errors. Only 23 in all of MLB history. Alerts begin in the 7th inning.</p>
+        <div class="event-type">⚡ Slow-burn · Inning 7+</div>
+      </div>
+
+      <div class="event-card" style="border-left-color:#FF6B35">
+        <div class="event-header">
+          <div class="event-name">No-Hitter</div>
+          <div class="event-rarity" style="background:#FF6B3512;color:#FF6B35;border:1px solid #FF6B3530">EXTREMELY RARE</div>
+        </div>
+        <p class="event-desc">Nine innings, zero hits. Roughly 3–5 per season across 30 teams. Combined no-hitters tracked separately.</p>
+        <div class="event-type">⚡ Slow-burn · Inning 7+</div>
+      </div>
+
+      <div class="event-card" style="border-left-color:#FF9500">
+        <div class="event-header">
+          <div class="event-name">Combined No-Hitter</div>
+          <div class="event-rarity" style="background:#FF950012;color:#FF9500;border:1px solid #FF950030">RARE</div>
+        </div>
+        <p class="event-desc">Multiple pitchers combine to hold a team hitless for 9 innings. Upgrades automatically when a second pitcher enters.</p>
+        <div class="event-type">⚡ Slow-burn · Inning 7+</div>
+      </div>
+
+      <div class="event-card" style="border-left-color:#4ECDC4">
+        <div class="event-header">
+          <div class="event-name">Shutout</div>
+          <div class="event-rarity" style="background:#4ECDC412;color:#4ECDC4;border:1px solid #4ECDC430">UNCOMMON</div>
+        </div>
+        <p class="event-desc">Zero runs allowed through 9 innings. Tracked in the 8th and 9th innings when a pitcher is still perfect on the scoreboard.</p>
+        <div class="event-type">⚡ Slow-burn · Inning 8+</div>
+      </div>
+
+      <div class="event-card" style="border-left-color:#FF3CAC">
+        <div class="event-header">
+          <div class="event-name">20-K Game</div>
+          <div class="event-rarity" style="background:#FF3CAC12;color:#FF3CAC;border:1px solid #FF3CAC30">LEGENDARY</div>
+        </div>
+        <p class="event-desc">Only 4 pitchers have ever struck out 20 in 9 innings. Alerts start at 15 Ks, with milestones at 17, 19, and 20.</p>
+        <div class="event-type">⚡ Slow-burn · 15 Ks threshold</div>
+      </div>
+
+      <div class="event-card" style="border-left-color:#B8A9FF">
+        <div class="event-header">
+          <div class="event-name">Hit for the Cycle</div>
+          <div class="event-rarity" style="background:#B8A9FF12;color:#B8A9FF;border:1px solid #B8A9FF30">RARE</div>
+        </div>
+        <p class="event-desc">Single, double, triple, and home run in one game. Roughly 350 in MLB history. Watch begins when a batter has 3 of 4.</p>
+        <div class="event-type">⚡ Slow-burn · 3 of 4 hit types</div>
+      </div>
+
+      <div class="event-card" style="border-left-color:#FF00AA">
+        <div class="event-header">
+          <div class="event-name">Unassisted Triple Play</div>
+          <div class="event-rarity" style="background:#FF00AA12;color:#FF00AA;border:1px solid #FF00AA30">MYTHIC</div>
+        </div>
+        <p class="event-desc">One fielder records all three outs on a single play. Only 15 in ALL of MLB history. Instant tweet, no build-up needed.</p>
+        <div class="event-type">⚡ Instant</div>
+      </div>
+
+      <div class="event-card" style="border-left-color:#2ECC71">
+        <div class="event-header">
+          <div class="event-name">Triple Play</div>
+          <div class="event-rarity" style="background:#2ECC7112;color:#2ECC71;border:1px solid #2ECC7130">VERY RARE</div>
+        </div>
+        <p class="event-desc">Three outs on one play. About 700 in MLB history — rare enough to stop and notice.</p>
+        <div class="event-type">⚡ Instant</div>
+      </div>
+
+      <div class="event-card" style="border-left-color:#FFD700">
+        <div class="event-header">
+          <div class="event-name">Immaculate Inning</div>
+          <div class="event-rarity" style="background:#FFD70012;color:#FFD700;border:1px solid #FFD70030">HISTORIC</div>
+        </div>
+        <p class="event-desc">9 pitches. 9 strikes. 3 strikeouts. Fewer than 100 in MLB history. Instant tweet when detected.</p>
+        <div class="event-type">⚡ Instant</div>
+      </div>
+
+      <div class="event-card" style="border-left-color:#FF6B35">
+        <div class="event-header">
+          <div class="event-name">4 Home Runs</div>
+          <div class="event-rarity" style="background:#FF6B3512;color:#FF6B35;border:1px solid #FF6B3530">HISTORIC</div>
+        </div>
+        <p class="event-desc">One batter, four home runs in a single game. Only 18 players in MLB history have done it.</p>
+        <div class="event-type">⚡ Instant · 4th HR</div>
+      </div>
+
+      <div class="event-card" style="border-left-color:#4ECDC4">
+        <div class="event-header">
+          <div class="event-name">Walk-off Grand Slam</div>
+          <div class="event-rarity" style="background:#4ECDC412;color:#4ECDC4;border:1px solid #4ECDC430">VERY RARE</div>
+        </div>
+        <p class="event-desc">Grand slam to end the game. One of the most dramatic plays in baseball. Instant tweet on detection.</p>
+        <div class="event-type">⚡ Instant</div>
+      </div>
+
+      <div class="event-card" style="border-left-color:#B8A9FF">
+        <div class="event-header">
+          <div class="event-name">Inside-the-Park HR</div>
+          <div class="event-rarity" style="background:#B8A9FF12;color:#B8A9FF;border:1px solid #B8A9FF30">RARE</div>
+        </div>
+        <p class="event-desc">No wall needed. About 15 happen in an entire MLB season across all 30 teams.</p>
+        <div class="event-type">⚡ Instant</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ALERT TIERS -->
+<section>
+  <div class="container">
+    <div class="section-label">Escalation System</div>
+    <h2>4 Alert <span>Tiers</span></h2>
+    <p>Slow-burn events don't just fire once — they escalate. As history gets closer, the alerts get louder, more frequent, and more urgent.</p>
+
+    <div class="tier-table">
+      <div class="tier-row header">
+        <div class="tier-cell">TIER</div>
+        <div class="tier-cell">POLL</div>
+        <div class="tier-cell">TWEET ON</div>
+        <div class="tier-cell">TRIGGER</div>
+      </div>
+      <div class="tier-row">
+        <div class="tier-cell tier-name" style="color:#2ECC71">STANDARD</div>
+        <div class="tier-cell">30s</div>
+        <div class="tier-cell">Each inning</div>
+        <div class="tier-cell" style="color:#444450">Innings 1–6, event developing</div>
+      </div>
+      <div class="tier-row">
+        <div class="tier-cell tier-name" style="color:#FFD700">ELEVATED</div>
+        <div class="tier-cell">10s</div>
+        <div class="tier-cell">Every out</div>
+        <div class="tier-cell" style="color:#444450">Inning 7+ with active event</div>
+      </div>
+      <div class="tier-row">
+        <div class="tier-cell tier-name" style="color:#FF6B35">CRITICAL</div>
+        <div class="tier-cell">10s</div>
+        <div class="tier-cell">Every out</div>
+        <div class="tier-cell" style="color:#444450">9th inning, event still alive</div>
+      </div>
+      <div class="tier-row">
+        <div class="tier-cell tier-name" style="color:#FF3C5A">IMMINENT</div>
+        <div class="tier-cell">10s</div>
+        <div class="tier-cell">Every out</div>
+        <div class="tier-cell" style="color:#444450">Final out — history one play away</div>
+      </div>
+    </div>
+
+    <p style="margin-top:24px;font-size:15px;">When a bid ends — a hit breaks up a no-hitter, a walk ends the perfect game — a 💔 heartbreak tweet fires immediately, jumping to the front of the queue.</p>
+  </div>
+</section>
+
+<!-- MONTE CARLO -->
+<section>
+  <div class="container">
+    <div class="section-label">Probability Engine</div>
+    <h2>Monte Carlo <span>Simulation</span></h2>
+    <p>Every tweet includes a real-time <em>Monte Carlo probability</em> — a statistical technique that runs 10,000 simulated versions of the remaining game to estimate the odds of completion. Each simulation uses live pitcher and opponent data, so the number updates after every single out.</p>
+
+    <div class="mc-visual">
+      <div class="mc-card">
+        <div class="mc-label">Perfect Game — Out 24</div>
+        <div class="mc-prob" style="color:#FFD700">34%</div>
+        <p style="font-size:14px;margin:0;color:var(--dim)">Inputs: Pitcher K-rate, BB-rate, WHIP · Opponent OBP · Park factor · Outs remaining</p>
+        <div class="mc-bar"><div class="mc-bar-fill" style="width:34%;background:#FFD700"></div></div>
+      </div>
+      <div class="mc-card">
+        <div class="mc-label">Perfect Game — Out 26</div>
+        <div class="mc-prob" style="color:#FF3C5A">71%</div>
+        <p style="font-size:14px;margin:0;color:var(--dim)">Same pitcher, 2 outs later. One out from history. Probability nearly doubles.</p>
+        <div class="mc-bar"><div class="mc-bar-fill" style="width:71%;background:#FF3C5A"></div></div>
+      </div>
+    </div>
+
+    <div class="tweet-example" style="margin-top:32px">
+      <div class="tweet-text">🚨🚨 ONE OUT AWAY.
+
+Spencer Strider — 26 up, 26 down.
+
+1 out from perfection.
+
+Monte Carlo probability: 71%
+
+ATL 1–0 NYY
+
+@Braves @Yankees @SpencerStrider99
+#MLB #DontJinxIt</div>
+      <div class="tweet-meta">
+        <span class="tweet-tag">TIER: IMMINENT</span>
+        <span class="tweet-tag">OUT 26 OF 27</span>
+        <span class="tweet-tag">280 CHARS</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COST -->
+<section>
+  <div class="container">
+    <div class="section-label">Architecture</div>
+    <h2>Built to Run at <span>$0</span></h2>
+    <p>No paid APIs. No database. No cloud bill. The entire stack runs on free tiers.</p>
+
+    <div style="margin-top:32px">
+      <div class="cost-row">
+        <div>
+          <div class="cost-service">MLB Stats API</div>
+          <div class="cost-note">statsapi.mlb.com — public, no key required</div>
+        </div>
+        <div class="cost-price">$0</div>
+      </div>
+      <div class="cost-row">
+        <div>
+          <div class="cost-service">X (Twitter) API</div>
+          <div class="cost-note">Free tier · write-only · 1,500 posts/month · ~200 used</div>
+        </div>
+        <div class="cost-price">$0</div>
+      </div>
+      <div class="cost-row">
+        <div>
+          <div class="cost-service">Google Cloud Run</div>
+          <div class="cost-note">Always-on · free tier · no credit card charges</div>
+        </div>
+        <div class="cost-price">$0</div>
+      </div>
+      <div class="cost-row">
+        <div>
+          <div class="cost-service">Database</div>
+          <div class="cost-note">None — all state is in-memory · resets between deploys</div>
+        </div>
+        <div class="cost-price">$0</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="flame-row" style="margin-bottom:20px">
+      <svg width="14" height="22" viewBox="0 0 40 56" fill="none"><defs><radialGradient id="ff" cx="50%" cy="75%" r="65%"><stop offset="0%" stop-color="#FFB300"/><stop offset="100%" stop-color="#FF4500" stop-opacity="0"/></radialGradient></defs><path d="M20 2C20 2 13 12 13 21C13 21 9 17 11 12C11 12 3 20 3 30C3 43 11 54 20 54C29 54 37 43 37 30C37 20 29 12 29 12C31 17 27 21 27 21C27 12 20 2 20 2Z" fill="url(#ff)"/></svg>
+    </div>
+    <p>Follow <a href="https://x.com/DontJinxIt" class="x-link" target="_blank">@DontJinxIt</a> on X for real-time rare event alerts all season long.</p>
+    <p style="margin-top:8px;font-size:13px">Built with Node.js · Deployed on Google Cloud · Data from MLB Stats API</p>
+  </div>
+</footer>
+
+</body>
+</html>

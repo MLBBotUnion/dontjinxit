@@ -125,7 +125,7 @@ function getPitcher(feed, gameInfo) {
 // Render's free tier expects something on $PORT, otherwise it marks the
 // service as crashed. We expose a minimal status endpoint.
 const http = require("http");
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 const server = http.createServer((req, res) => {
   if (req.url === "/health") {

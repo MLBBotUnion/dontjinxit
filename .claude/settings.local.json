@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /home/rhubbard/dontjinxit/src && touch /home/rhubbard/dontjinxit/src/index.js /home/rhubbard/dontjinxit/src/mlbPoller.js /home/rhubbard/dontjinxit/src/monteCarlo.js /home/rhubbard/dontjinxit/src/tweetComposer.js /home/rhubbard/dontjinxit/src/xClient.js /home/rhubbard/dontjinxit/src/playerHandles.js /home/rhubbard/dontjinxit/src/edgeCases.js /home/rhubbard/dontjinxit/src/testHarness.js)"
+    ]
+  }
+}

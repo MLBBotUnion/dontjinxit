@@ -237,11 +237,11 @@ const SCENARIOS = [
       gameNumber: 1,
     },
     states: [
-      { outsRecorded: 21, inning: 7, half: "Top", hitsAllowed: 0, walksAllowed: 0, runsAllowed: 0, strikeoutsToday: 11, abstractGameCode: "I",  note: "7th inning — no-hitter active, ELEVATED" },
-      { outsRecorded: 21, inning: 7, half: "Top", hitsAllowed: 0, walksAllowed: 0, runsAllowed: 0, strikeoutsToday: 11, abstractGameCode: "DR", note: "⛈️ RAIN DELAY — poll slows, delay tweet fires" },
-      { outsRecorded: 21, inning: 7, half: "Top", hitsAllowed: 0, walksAllowed: 0, runsAllowed: 0, strikeoutsToday: 11, abstractGameCode: "I",  note: "▶️ Game resumes — ELEVATED polling restores" },
-      { outsRecorded: 24, inning: 8, half: "Bottom", hitsAllowed: 0, walksAllowed: 0, runsAllowed: 0, strikeoutsToday: 13, abstractGameCode: "I", note: "End of 8th — no double-tweets after delay" },
-      { outsRecorded: 27, inning: 9, half: "Bottom", hitsAllowed: 0, walksAllowed: 0, runsAllowed: 0, strikeoutsToday: 14, abstractGameCode: "F", note: "NO-HITTER COMPLETE 🎉", complete: true },
+      { outsRecorded: 21, inning: 7, half: "Top", hitsAllowed: 0, walksAllowed: 1, runsAllowed: 0, strikeoutsToday: 11, abstractGameCode: "I",  note: "7th inning — no-hitter active, ELEVATED" },
+      { outsRecorded: 21, inning: 7, half: "Top", hitsAllowed: 0, walksAllowed: 1, runsAllowed: 0, strikeoutsToday: 11, abstractGameCode: "DR", note: "⛈️ RAIN DELAY — poll slows, delay tweet fires" },
+      { outsRecorded: 21, inning: 7, half: "Top", hitsAllowed: 0, walksAllowed: 1, runsAllowed: 0, strikeoutsToday: 11, abstractGameCode: "I",  note: "▶️ Game resumes — ELEVATED polling restores" },
+      { outsRecorded: 24, inning: 8, half: "Bottom", hitsAllowed: 0, walksAllowed: 1, runsAllowed: 0, strikeoutsToday: 13, abstractGameCode: "I", note: "End of 8th — no double-tweets after delay" },
+      { outsRecorded: 27, inning: 9, half: "Bottom", hitsAllowed: 0, walksAllowed: 1, runsAllowed: 0, strikeoutsToday: 14, abstractGameCode: "F", note: "NO-HITTER COMPLETE 🎉", complete: true },
     ],
     pitcherStats: { pitcherKRate: 0.31, pitcherBBRate: 0.07, pitcherWHIP: 0.92, oppOBP: 0.308, parkFactor: 0.98 },
     expectedEvents: ["no_hitter"],
@@ -384,7 +384,7 @@ function runScenario(scenario) {
         : "STANDARD";
 
       // Only tweet once per out in ELEVATED+ (dedup by outKey)
-      const outKey = `${evType}-${state.outsRecorded}`;
+      const outKey = `${evType}-${state.outsRecorded}-${state.strikeoutsToday ?? ""}`;
       if (tweetedOuts.has(outKey)) continue;
       tweetedOuts.add(outKey);
 

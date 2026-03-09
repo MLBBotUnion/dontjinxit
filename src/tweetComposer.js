@@ -69,6 +69,26 @@ ${buildTags(info)}
 #MLB #DontJinxIt`);
 }
 
+function combinedNoHitter(info, outsRecorded, prob, tier) {
+  const left = 27 - outsRecorded;
+  const prefix = tier === "IMMINENT" ? "🤫 ONE OUT."
+    : tier === "CRITICAL"            ? "🤫 FINAL INNING."
+    :                                  "🤫";
+
+  return trim280(`${prefix}
+
+COMBINED NO-HITTER. ${outsRecorded} batters. No hits.
+
+${left} out${left !== 1 ? "s" : ""} remaining.
+
+MC: ${prob}%
+
+${info.awayAbbr} ${info.awayScore}–${info.homeScore} ${info.homeAbbr}
+
+${buildTags(info)}
+#MLB #DontJinxIt`);
+}
+
 function shutout(info, outsRecorded, prob, tier) {
   const left = 27 - outsRecorded;
   return trim280(`🔒 SHUTOUT WATCH.
@@ -250,8 +270,9 @@ function compose(ev, gameInfo, gs, tier, prob) {
 
   switch (ev.type) {
     // Slow-burn alerts
-    case "perfect_game":    return perfectGame(info, gs.outsRecorded, prob, tier);
-    case "no_hitter":       return noHitter(info, gs.outsRecorded, prob, tier);
+    case "perfect_game":       return perfectGame(info, gs.outsRecorded, prob, tier);
+    case "no_hitter":          return noHitter(info, gs.outsRecorded, prob, tier);
+    case "combined_no_hitter": return combinedNoHitter(info, gs.outsRecorded, prob, tier);
     case "shutout":         return shutout(info, gs.outsRecorded, prob, tier);
     case "k_game":          return kGame(info, gs.strikeoutsToday, prob, tier);
     case "cycle":           return cycle(info, ev.cycleHits, ev.cycleNeeds, prob);
